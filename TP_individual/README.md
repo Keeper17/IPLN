@@ -1,0 +1,1 @@
+Processador de texto que identifica e censura palavras de uma determinada classe. Utiliza a biblioteca Spacy para classificar as palavras, tendo acesso a várias línguas.

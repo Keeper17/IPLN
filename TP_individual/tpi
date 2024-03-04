@@ -1,0 +1,89 @@
+#!/usr/bin/python3
+
+import sys
+from getopt import getopt
+from re import *
+import spacy
+
+# "hpc1.txt"
+# ./tpi -i            -t "harry_potter.txt"              -> lista de labels de entidades e numero de vezes q aparece
+# ./tpi -l PERSON     -t "harry_potter.txt"              -> Lista de entidades com a label
+# ./tpi -p PERSON,ORG -t "harry_potter.txt"              -> Substitui todas as PERSONs e ORGs
+# ./tpi -p PERSON,ORG -t "harry_potter.txt" -d           -> Substitui todas as PERSONs e ORGs, e apresenta os valores de cada entidade
+# ./tpi -p PERSON,ORG -t "harry_potter.txt" -d > out.txt -> Substitui todas as PERSONs e ORGs, e apresenta os valores de cada entidade, num ficheiro de texto externo
+# ./tpi -h                                               -> Lista de labels disponiveis
+
+#------------------------------------------------------------------------------
+
+ops, args = getopt(sys.argv[1:], "il:hp:t:d")
+ops = dict(ops)
+
+if "-h" in ops:
+    with open("help.txt", encoding='utf8') as f:
+        print(f.read())
+
+#------------------------------------------------------------------------------
+# Leitura do ficheiro 
+
+else:
+    nlp = spacy.load("en_core_web_lg")
+
+    if "-t" not in ops:
+        raise Exception("Invalid File")
+    
+    with open(ops.get("-t"), encoding='utf8') as f:
+        texto = f.read()
+        sp = nlp(texto)
+
+#------------------------------------------------------------------------------
+# Dicionario ( Labels, Nº de ocurrencias)
+    if "-i" in ops:
+        lista = {}
+        for ent in sp.ents:
+            if ent.label_ not in lista:
+                lista[str(ent.label_)] = 1
+            else:
+                lista[str(ent.label_)] += 1 
+        print(lista)
+
+#------------------------------------------------------------------------------
+# Dicionario (Entiade, Nº de ocurrencias) de cada label dada
+    if "-l" in ops:
+        labels = split(",",ops.get("-l"))
+        for label in labels:
+            lista = {}
+            for s in sp.ents:
+                if s.label_ == label:
+                    if str(s) not in lista:
+                        lista[str(s)] = 1
+                    else:
+                        lista[str(s)] += 1 
+            print(lista)
+            print("Total de " + label + " encontrados: " + str(len(lista)))
+            print("=====")
+
+#------------------------------------------------------------------------------
+# Substituicao das entidades no texto
+
+    if "-p" in ops:
+        labs = split(",",ops.get("-p"))
+        for lab in labs:
+            lista = {}
+            for s in sp.ents:
+                if s.label_ == lab:
+                    if str(s) not in lista:
+                        lista[str(s)] = 1
+                    else:
+                        lista[str(s)] += 1 
+
+            dic = {}
+            num = 1
+            for a,v in lista.items():
+                nome = str(a)
+                texto = sub(rf"{nome}(s)?",(str(lab)+str(num)),texto)
+                dic[nome] = str(num)
+                num +=1
+
+            if "-d" in ops:
+                print(str(lab)+ " ==== " +str(dic) + " \n")
+        print(texto)
