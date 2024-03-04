@@ -1,0 +1,126 @@
+#!/usr/bin/python3
+import os
+from re import *
+import sys
+from getopt import getopt
+import requests
+import json
+
+################## COMO CORRER O PROGRAMA ##################
+
+#python3 tp2 [-p|-f] -i (ID do texto) -l (lingua 1)/(lingua 2)                          -> correr só um texto e alinhar nas duas dadas línguas
+#python3 tp2 [-p|-f] -l (lingua 1)/(lingua 2) -a (ficheiro de entrada com os ID's)      -> correr todos os textos cujo ID esteja no ficheiro de entrada nas 2 línguas especificadas
+
+
+################## FUNCAO DE ALINHAMENTO POR PARAGRAFO OU FRASE ##################
+
+def aligner(id, ops):
+    languages = split(r'/', ops.get("-l"))
+
+    r = requests.get(
+        "https://ted2srt.org/api/talks/" + id + "/transcripts/txt?lang=" + languages[0]
+        )
+    r.encoding = r.apparent_encoding
+    texto = r.text
+
+    texto = sub(r'\.(?:[a-zA-Z]+)', '. ', texto)
+
+    if '-f' in ops:
+        listaOg = split(r'[\!\?\:—]|--|(?<!\.)\.[ \n]|\.{3}[ ]?[\nA-Z]', texto)
+    elif '-p' in ops:
+        listaOg = split(r'\W\n', texto)
+    else : 
+        print("Flag inválida")
+        exit(1)
+
+
+
+    a = requests.get(
+        "https://ted2srt.org/api/talks/" + id + "/transcripts/txt?lang=" + languages[1]
+        )
+    a.encoding = a.apparent_encoding
+    t2 = a.text
+
+    t2 = sub(r'\.(?:[a-zA-Z]+)', '. ', t2)
+
+    if '-f' in ops:
+        listaTraducao = split(r'[\!\?\:—]|--|(?<!\.)\.[ \n]|\.{3}[ ]?[\nA-Z]', t2)
+    elif '-p' in ops:
+        listaTraducao = split(r'\W\n', t2)
+    else : 
+        print("Flag inválida")
+        exit(1)
+
+
+    dict_json = {}
+    i = 0
+    c = 0
+
+    print("\n\n******** Id do texto: " + id + ", linguas: " + languages[0] + "/" + languages[1] + " ********\n\n")
+
+    if(len(listaOg) < len(listaTraducao)):
+        menor_array = len(listaOg)
+    else:
+        menor_array = len(listaTraducao)
+
+    for ele in range(0, menor_array):
+        if len(listaOg[i]) == 0 or len(listaTraducao[c]) == 0:      
+            if len(listaOg[i]) == 0:
+                i = i+1
+            if len(listaTraducao[c]) == 0:
+                c = c+1
+        else:
+            dict_json[ele] = { languages[0] : listaOg[i], languages[1] : listaTraducao[i]}
+            print(listaOg[i])
+            print("----")
+            print(listaTraducao[c])
+            c = c+1
+            i = i+1
+            print("=====\n=====")
+
+    last_key = int
+
+    if(len(listaOg) < len(listaTraducao)):
+        last_key = c-1
+        while c < len(listaTraducao):
+            dict_json[last_key][languages[1]] = dict_json[last_key][languages[1]] + ". " + listaTraducao[c]
+            c = c+1
+    else:
+        last_key = i-1
+        while i < len(listaOg):
+            dict_json[last_key][languages[0]] = dict_json[last_key][languages[0]] + ". " + listaOg[i]
+            i = i+1
+
+
+    with open("data/data" + id + ".json", 'w+') as outfile:
+        json.dump(dict_json, outfile, indent=4, ensure_ascii=False)
+
+################## MAIN PARA VERIFICAR SE VAI ALINHAR VARIOS TEXTOS OU SÓ UM ##################
+
+def main():
+    ops, args = getopt(sys.argv[1:], "pfi:l:a:")
+
+    ops = dict(ops)
+    print("Flags: ", ops, args)
+
+    if not os.path.exists('data'):
+        os.makedirs('data')
+
+    if '-a' in ops:
+
+        with open(ops.get("-a"), "r") as file:
+            while True:
+                line = file.readline().rstrip("\n")
+                if not line:
+                    break
+
+                aligner(line, ops)
+
+    else:
+        aligner(ops.get("-i"), ops)
+
+################## CHAMAR A MAIN ##################
+
+if __name__ == "__main__":
+    main()
+
