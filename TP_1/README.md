@@ -1,0 +1,1 @@
+Analisador de texto que apresenta contagem de palavras. Consegue apresentar os temas principais do texto comparando a ocorrência de certas palavras no texto com as ocurrências noutro texto exemplo. 

@@ -1,0 +1,230 @@
+#!/usr/bin/python3
+
+from re import *
+import math
+
+#-------------------------------------------------------------------------------------------------------------------------
+# Definicao do menu principal da aplicacao
+
+menu = {}
+menu[''] = "\n -------------- Analisador de texto ----------------\n"
+menu['1'] = "Introduzir o nome do texto que pretende analisar."
+menu['2'] = "Contagem de ocorrências de cada palavra no texto."
+menu['3'] = "Definir blacklist (palavras a não ser consideradas)."
+menu['4'] = "Número do capítulos do texto."
+menu['5'] = "Frequências relativas logarítmicas para inferir os principais temas do texto."
+menu['6'] = "Encontrar uma certa Palavra.\n"
+menu['q'] = "Sair.\n"
+
+texto = ""
+blacklist = []
+excecoes = {"can’t" : "can n't",
+            "won’t" : "will n't",
+            "couldn’t" : "could n't",
+            "could’ve" : "could 've",
+            "hadn’t" : "had n't",
+            "haven’t" : "have n't",
+            "hasn’t" : "has n't",
+            "didn’t" : "did n't",
+            "don’t" : "do n't",
+            "wasn’t" : "was n't",
+            "wouldn’t" : "would n't",
+            "isn’t" : "is n't",
+            "i’m" : "i 'm",
+            "i’d" : "i 'd",
+            "i’ve" : "i 've",
+            "i’ll" : "i 'll",
+            "you’re" : "you 're",
+            "you’d" : "you 'd",
+            "you’ll" : "you 'll",
+            "you’ve" : "you 've",
+            "he’s" : "he 's",
+            "he’d" : "he 'd",
+            "he’ll" : "he 'll",
+            "she’s" : "she 's",
+            "she’d" : "she 'd",
+            "she’ll" : "she 'll",
+            "it’s" : "it 's",
+            "it’ll" : "it 'll",
+            "we’re" : "we 're",
+            "we’d" : "we 'd",
+            "we’ll" : "we 'll",
+            "we’ve" : "we 've",
+            "they’d" : "they 'd",
+            "they’ll" : "they 'll",
+            "they’re" : "they 're",
+            }
+
+while True:
+    opcoes = menu.keys();
+
+    for o in opcoes:
+        print(o, menu[o])
+
+    escolha = input("Escolha uma opção:\n")
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+# Leitura do ficheiro, a partir do input do utilizador. São substituidas palavras com '’' para que estejam com a mesma
+# estrutura das utilizadas para a opcao 5.
+
+    if (escolha == '1'):
+
+        texto = None
+        while(texto == None):
+            try:
+                ficheiro = input("\nNome do ficheiro: ")
+                with open(ficheiro, encoding='utf8') as f:
+                    texto = f.read().lower()
+                    print("Ficheiro "+ ficheiro + " lido com sucesso")
+
+                for word, replace in excecoes.items():
+                    texto = sub(rf'\b{word}\b', rf'{replace}', texto)
+
+            except FileNotFoundError:
+                print("Ficheiro Inválido/Inexistente")
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+# Preenche o Dicionario com as palavras diferentes existentes no livro, bem como o seu numero de ocorrencias
+
+    elif (escolha == '2'):
+
+        if (texto == ""):
+            print("Não foi selecionado um ficheiro. Selecione a opção 1!")
+
+        else:
+            ocorrencias = {}
+            texto2 = sub(r'\n\n+','\n',texto)
+            palavras = findall('[a-zA-Z’]*',texto2)
+            numPal = 0
+
+            for pal in palavras:
+                if not pal:
+                    continue
+                if pal in ocorrencias:
+                    if pal not in blacklist:
+                        ocorrencias[pal] += 1
+                        numPal +=1
+                else:
+                    ocorrencias[pal] = 1
+                    numPal +=1
+
+            print("\nNúmero de Palavras: "+str(numPal))
+
+            inp = None
+            while (inp!="q"):
+                print("Escreva \"q\" para voltar ao Menu, \"alf\" para mostrar as palavras ordenadas alfabeticamente ou \"num\" para ordenadas numericamente.")
+                inp = input().lower()
+                if inp == "num":
+                    for chave, valor in sorted( ocorrencias.items(), key = lambda x:x[1]):
+                        print("%5s  %1s"%(valor,chave))
+                if inp == "alf":
+                    for chave, valor in sorted(ocorrencias.items(),reverse=True, key = lambda x:x[0]):
+                        print("%14s  %1s"%(chave,valor))                    
+
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+# Cria uma Blacklista. Palavras presentes na Blacklist nao serao consideradas nas restantes opcoes
+
+    elif (escolha == '3'):
+        lista = input("Blacklist (separe as palavras por vírgula): ").lower()
+        blacklist = split(r', ', lista)
+        print("Blacklist atual -> " + str(blacklist))
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+# Conta o numero de capitulos do livro
+
+    elif (escolha == '4'):
+        if (texto == ""):
+            print("Não foi selecionado um ficheiro. Selecione a opção 1!")
+
+        else:
+            count = 0
+            caps = findall(r'^\W*C(?i)HAPTER \w+\W*\n', texto, flags=MULTILINE)
+            for capitulo in caps:
+                count += 1
+
+            print('Nº de capítulos: ' + str(caps.__len__()))
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+# Calcula a frequencia relativa logaritmica. Utilizando um outro ficheiro como corpusGrande, compara o numero de vezes que
+# cada palavra se repete no livro e no ficheiro, para inferir quais as palavras principais do livro
+
+    elif (escolha == '5'):
+
+        freqRelM = {}
+        texto2 = sub(r'\n\n+','\n', texto)
+        palavras = findall(r'[a-zA-Z’]*', texto2)
+
+        numPal = 0
+
+        for pal in palavras:
+            if not pal:
+                continue
+            if pal in freqRelM:
+                if pal not in blacklist:
+                    freqRelM[pal] += 1
+                    numPal += 1
+            else:
+                freqRelM[pal] = 1
+                numPal +=1
+
+        for chave, valor in freqRelM.items():
+            freqRelM[chave] = (freqRelM[chave]/numPal) * 1000000
+
+        corpusGrande = None
+        while(corpusGrande == None):
+            try:
+                ficheiro = input("Nome do ficheiro: ")
+                with open(ficheiro, encoding='utf8') as f:
+                    corpusGrande = f.read().capitalize()
+                    print("\nFicheiro "+ ficheiro + " lido com sucesso")
+            except FileNotFoundError:
+                print("Ficheiro Inválido/Inexistente")
+
+        freqRelMCorpus = {}
+        palCorpus = split(r'\W+', corpusGrande)
+        numPalCorpus = len(palCorpus)
+
+        assuntos = {}
+
+        for chave in freqRelM:
+            freqRelMCorpus[chave] = palCorpus.count(chave)
+            freqRelMCorpus[chave] = (freqRelMCorpus[chave]/numPalCorpus) * 1000000
+            if (freqRelMCorpus[chave] == 0):
+                assuntos[chave] = math.log(freqRelM[chave])
+            else:
+                assuntos[chave] = math.log(freqRelM[chave]) - math.log(freqRelMCorpus[chave])
+
+        for chave, valor in sorted(assuntos.items(), key = lambda x:x[1]):
+            chave = chave.capitalize()
+            print("%12s  %1s"%(chave,valor))
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+# Encontra utilizacoes da palavra no livro, mostrando tambem parte da frase/contexto em que esta aparece
+
+    elif (escolha == '6'):
+        palavra = input("Insira a palavra que deseja encontrar: ")
+        palavra = palavra.lower()
+        
+        frases = findall(r'.{,20}' + palavra + r'.{,20}', texto, DOTALL)
+
+        for con in frases:
+            con = sub("[\t\n\r\f\v]", " ", con)
+            print("..."+con+"...")
+
+
+#-------------------------------------------------------------------------------------------------------------------------
+# Opcao para sair do programa e opcao com um numero invalido
+
+    elif ( escolha == 'q'):
+        print("See you later!")
+        break
+
+    else:
+        print("Opção inválida! Tente novamente.")
